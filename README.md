@@ -1,1 +1,839 @@
-# Noorwegen-1
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🇳🇴 Noorwegen EV Roadtrip — Gent → Zuid-Noorwegen | 4–19 juli</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  :root {
+    --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --accent2: #22d3ee;
+    --green: #4ade80; --orange: #fb923c; --red: #f87171; --purple: #a78bfa;
+    --text: #e2e8f0; --muted: #94a3b8; --surface: #334155;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+
+  /* HERO */
+  .hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
+    padding: 60px 24px 40px; text-align:center; position:relative; overflow:hidden;
+  }
+  .hero::before {
+    content:''; position:absolute; top:-50%; left:-50%; width:200%; height:200%;
+    background: radial-gradient(circle at 30% 50%, rgba(56,189,248,0.08) 0%, transparent 50%),
+                radial-gradient(circle at 70% 80%, rgba(34,211,238,0.06) 0%, transparent 40%);
+  }
+  .hero h1 { font-size:clamp(28px,5vw,48px); font-weight:800; position:relative; }
+  .hero h1 span { background:linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .hero p { max-width:700px; margin:16px auto 0; color:var(--muted); font-size:18px; position:relative; }
+  .hero-badges { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:24px; position:relative; }
+  .hero-badges .badge { background:var(--surface); border:1px solid rgba(56,189,248,0.3); padding:6px 16px; border-radius:999px; font-size:13px; color:var(--accent); }
+
+  /* NAV */
+  .sticky-nav {
+    position:sticky; top:0; z-index:1000; background:rgba(15,23,42,0.95);
+    backdrop-filter:blur(12px); border-bottom:1px solid var(--surface); padding:0 24px;
+  }
+  .sticky-nav ul { display:flex; gap:0; list-style:none; max-width:1200px; margin:0 auto; overflow-x:auto; }
+  .sticky-nav li a {
+    display:block; padding:14px 18px; font-size:14px; font-weight:600; color:var(--muted);
+    white-space:nowrap; border-bottom:2px solid transparent; transition:all .2s;
+  }
+  .sticky-nav li a:hover, .sticky-nav li a.active { color:var(--accent); border-color:var(--accent); text-decoration:none; }
+
+  /* SECTIONS */
+  .container { max-width:1100px; margin:0 auto; padding:0 24px; }
+  section { padding:56px 0; }
+  section:nth-child(even) { background:rgba(30,41,59,0.3); }
+  .section-title { font-size:clamp(22px,3.5vw,32px); font-weight:800; margin-bottom:8px; }
+  .section-title .emoji { margin-right:8px; }
+  .section-sub { color:var(--muted); margin-bottom:32px; font-size:16px; }
+
+  /* MAP */
+  #map { width:100%; height:500px; border-radius:16px; border:1px solid var(--surface); }
+
+  /* CARDS */
+  .card-grid { display:grid; gap:20px; }
+  .card-grid.cols-2 { grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); }
+  .card-grid.cols-3 { grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); }
+  .card {
+    background:var(--card); border:1px solid var(--surface); border-radius:14px; padding:24px;
+    transition:transform .2s, border-color .2s;
+  }
+  .card:hover { transform:translateY(-3px); border-color:var(--accent); }
+  .card h3 { font-size:18px; margin-bottom:8px; }
+  .card p { color:var(--muted); font-size:14px; }
+  .card .tag { display:inline-block; font-size:11px; padding:3px 10px; border-radius:999px; margin-top:10px; margin-right:4px; font-weight:600; }
+  .tag-ev { background:rgba(74,222,128,0.15); color:var(--green); }
+  .tag-hike { background:rgba(251,146,60,0.15); color:var(--orange); }
+  .tag-scenic { background:rgba(56,189,248,0.15); color:var(--accent); }
+  .tag-city { background:rgba(167,139,250,0.15); color:var(--purple); }
+  .tag-free { background:rgba(74,222,128,0.15); color:var(--green); }
+  .tag-budget { background:rgba(251,146,60,0.15); color:var(--orange); }
+
+  /* TIMELINE */
+  .timeline { position:relative; padding-left:36px; }
+  .timeline::before { content:''; position:absolute; left:14px; top:0; bottom:0; width:2px; background:var(--surface); }
+  .tl-item { position:relative; margin-bottom:28px; }
+  .tl-dot {
+    position:absolute; left:-36px; top:4px; width:24px; height:24px; border-radius:50%;
+    background:var(--accent); display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:800; color:var(--bg);
+  }
+  .tl-item h3 { font-size:17px; margin-bottom:4px; }
+  .tl-item .tl-meta { font-size:13px; color:var(--accent); margin-bottom:6px; }
+  .tl-item p { color:var(--muted); font-size:14px; }
+  .tl-item .tl-ev { background:rgba(74,222,128,0.1); border:1px solid rgba(74,222,128,0.2); border-radius:8px; padding:8px 12px; margin-top:8px; font-size:13px; color:var(--green); }
+
+  /* TABLE */
+  .price-table { width:100%; border-collapse:collapse; margin-top:16px; font-size:14px; }
+  .price-table th { text-align:left; padding:12px; background:var(--surface); color:var(--accent); font-weight:700; border-radius:8px 8px 0 0; }
+  .price-table td { padding:10px 12px; border-bottom:1px solid var(--surface); }
+  .price-table tr:hover td { background:rgba(56,189,248,0.05); }
+
+  /* TIPS */
+  .tip-box {
+    background:var(--card); border-left:4px solid var(--accent); border-radius:0 12px 12px 0;
+    padding:20px 24px; margin-bottom:16px;
+  }
+  .tip-box.green { border-color:var(--green); }
+  .tip-box.orange { border-color:var(--orange); }
+  .tip-box.red { border-color:var(--red); }
+  .tip-box h4 { margin-bottom:6px; font-size:15px; }
+  .tip-box p, .tip-box ul { color:var(--muted); font-size:14px; }
+  .tip-box ul { padding-left:18px; margin-top:6px; }
+  .tip-box ul li { margin-bottom:4px; }
+
+  /* WEATHER */
+  .weather-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
+  .weather-card { background:var(--card); border-radius:12px; padding:20px; text-align:center; }
+  .weather-card .temp { font-size:32px; font-weight:800; }
+  .weather-card .label { color:var(--muted); font-size:13px; margin-top:4px; }
+
+  /* CHECKLIST */
+  .checklist { list-style:none; }
+  .checklist li { padding:10px 0; border-bottom:1px solid var(--surface); font-size:14px; display:flex; align-items:flex-start; gap:10px; }
+  .checklist li::before { content:'✓'; color:var(--green); font-weight:800; font-size:16px; flex-shrink:0; }
+
+  /* APP GRID */
+  .app-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; }
+  .app-card {
+    background:var(--card); border:1px solid var(--surface); border-radius:10px; padding:16px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .app-icon { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; flex-shrink:0; }
+  .app-card h4 { font-size:14px; margin-bottom:2px; }
+  .app-card p { font-size:12px; color:var(--muted); }
+
+  /* BUDGET BAR */
+  .budget-row { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .budget-label { width:140px; font-size:14px; flex-shrink:0; }
+  .budget-bar-wrap { flex:1; background:var(--surface); border-radius:8px; height:24px; overflow:hidden; }
+  .budget-bar { height:100%; border-radius:8px; display:flex; align-items:center; padding-left:10px; font-size:12px; font-weight:700; }
+  .budget-amount { width:100px; text-align:right; font-size:14px; font-weight:700; }
+
+  /* FOOTER */
+  footer { background:var(--card); padding:32px 24px; text-align:center; color:var(--muted); font-size:13px; border-top:1px solid var(--surface); }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width:8px; height:8px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--surface); border-radius:4px; }
+
+  @media(max-width:768px) {
+    .sticky-nav li a { padding:12px 12px; font-size:13px; }
+    #map { height:350px; }
+    section { padding:40px 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== HERO ==================== -->
+<div class="hero">
+  <h1>🇳🇴 <span>Noorwegen EV Roadtrip</span></h1>
+  <p>Gent → Zuid-Noorwegen & terug — 4 t.e.m. 19 juli — 16 dagen budgetvriendelijk met je elektrische auto door de mooiste fjorden, bergen en watervallen van Scandinavië.</p>
+  <div class="hero-badges">
+    <span class="badge">⚡ 100% Elektrisch</span>
+    <span class="badge">🗓 16 Dagen</span>
+    <span class="badge">💰 Budgetfocus</span>
+    <span class="badge">🏔 Zuid-Noorwegen</span>
+    <span class="badge">🚗 ±4.800 km</span>
+  </div>
+</div>
+
+<!-- ==================== NAV ==================== -->
+<nav class="sticky-nav">
+  <ul>
+    <li><a href="#route">Kaart</a></li>
+    <li><a href="#dagplanning">Dagplanning</a></li>
+    <li><a href="#ev">EV & Laden</a></li>
+    <li><a href="#bezienswaardigheden">Must-sees</a></li>
+    <li><a href="#weer">Weer</a></li>
+    <li><a href="#budget">Budget</a></li>
+    <li><a href="#tips">Tips & Tricks</a></li>
+    <li><a href="#packlist">Paklijst</a></li>
+  </ul>
+</nav>
+
+<!-- ==================== ROUTE MAP ==================== -->
+<section id="route">
+<div class="container">
+  <h2 class="section-title"><span class="emoji">🗺</span>De Route</h2>
+  <p class="section-sub">Interactieve kaart met alle stops, bezienswaardigheden en laadpunten. Klik op de markers voor info.</p>
+  <div id="map"></div>
+  <div style="margin-top:16px; display:flex; gap:16px; flex-wrap:wrap; font-size:13px; color:var(--muted);">
+    <span>🔵 Route heen</span> <span>🟢 Route terug (Zweden)</span> <span>📍 Overnachting</span> <span>⭐ Bezienswaardigheid</span>
+  </div>
+</div>
+</section>
+
+<!-- ==================== DAGPLANNING ==================== -->
+<section id="dagplanning">
+<div class="container">
+  <h2 class="section-title"><span class="emoji">📅</span>Dag-per-dag planning</h2>
+  <p class="section-sub">Gedetailleerd schema met overnachtingen, activiteiten en EV-laadadvies per dag.</p>
+
+  <div class="timeline">
+
+    <div class="tl-item"><div class="tl-dot">1</div>
+      <h3>Gent → Hamburg-regio</h3>
+      <div class="tl-meta">4 juli · ±600 km · 6u rijden</div>
+      <p>Transitdag door België, Nederland en Noord-Duitsland. Snelwegen met veel laadinfrastructuur. Overnachting rond Hamburg. Tip: tank goedkoop boodschappen bij een Duitse supermarkt (ALDI/Lidl) voor de rest van de reis!</p>
+      <div class="tl-ev">⚡ Laden: Fastned/IONITY langs A1/A7 in Duitsland. Laad bij aankomst vol.</div>
+    </div>
+
+    <div class="tl-item"><div class="tl-dot">2</div>
+      <h3>Hamburg → Hirtshals (Denemarken)</h3>
+      <div class="tl-meta">5 juli · ±530 km · 5,5u rijden</div>
+      <p>Door naar het noorden van Jutland. Denemarken heeft een uitstekend laadnetwerk. Overnachting in Hirtshals of omgeving. Avondferry nemen is ook een optie als de timing past!</p>
+      <div class="tl-ev">⚡ Laden: Laad in Hirtshals volledig op vóór de ferry. Clever/E.ON/Circle K beschikbaar in Denemarken.</div>
+    </div>
+
+    <div class="tl-item"><div class="tl-dot">3</div>
+      <h3>Ferry Hirtshals → Kristiansand → richting Stavanger</h3>
+      <div class="tl-meta">6 juli · Ferry ±3u15 + ±240 km rijden</div>
+      <p>Aankomst in Noorwegen! Kristiansand is een gezellig kuststadje. Rij door richting Stavanger, geniet van de eerste Noorse landschappen. Overnachting net buiten Stavanger (goedkoper).</p>
+      <div class="tl-ev">⚡ Laden: Direct na aankomst in Kristiansand laden. Mer/Recharge/Circle K in de regio.</div>
+    </div>
+
+    <div class="tl-item"><div class="tl-dot">4</div>
+      <h3>Stavanger & omgeving</h3>
+      <div class="tl-meta">7 juli · Stad + omgeving verkennen</div>
+      <p>Verken het oude centrum van Stavanger: de witte houten huisjes in "Gamle Stavanger", de haven, het Noorse Oliemuseum. Geniet van de sfeer, doe boodschappen voor de hike morgen.</p>
+      <div class="tl-ev">⚡ Laden: Stavanger heeft veel laadpunten. Laad 's avonds op voor de Preikestolen-dag.</div>
+    </div>
+
+    <div class="tl-item"><div class="tl-dot">5</div>
+      <h3>Preikestolen (Pulpit Rock) hike</h3>
+      <div class="tl-meta">8 juli · Hike ±8 km · 4-5 uur retour</div>
+      <p><strong>Dé iconische hike van Noorwegen.</strong> 604m boven de Lysefjord. Niet technisch moeilijk, maar wel pittig. Start zo vroeg mogelijk (vóór 7u) om drukte te vermijden — in juli kan het 1.500+ wandelaars per dag zijn. Gratis hike, parkeren ±250 NOK.</p>
+      <div class="tl-ev">⚡ Laden: Laadpunten bij Preikestolen Fjellstue. Laad terwijl je wandelt!</div>
+    </div>
+
+    <div class="tl-item"><div class="tl-dot">6</div>
+      <h3>Stavanger → Hardangerfjord (Odda-regio)</h3>
+      <div class="tl-meta">9 juli · ±250 km · 4-5u incl. ferry's</div>
+      <p>Spectaculaire rit langs fjorden en door tunnels. Stop bij de <strong>Langfoss waterval</strong> (een van de mooiste van Europa) en de dubbele <strong>Låtefossen</strong> waterval pal naast de weg. Overnachting in Odda of omgeving.</p>
+      <div class="tl-ev">⚡ Laden: BKK/Mer laders in Odda. Plan vooruit — het netwerk is dunner in deze regio.</div>
+    </div>
+
+    <div class="tl-item"><div class="tl-dot">7</div>
+      <h3>Hardangerfjord verkennen</h3>
+      <div class="tl-meta">10 juli · Dagtrip watervallen + fjord</div>
+      <p>Rij naar <strong>Vøringsfossen</strong> — de beroemdste waterval van Noorwegen (182m). Het uitzichtplatform is spectaculair. Geniet van de fruitboomgaarden rond de fjord, maak korte wandelingen. Optioneel: Trolltunga (zware daghike, 10-12u, 28 km — alleen voor ervaren wandelaars).</p>
+      <div class="tl-ev">⚡ Laden: Laadpunten bij Fossli Hotel/Eidfjord. Hou rekening met hoogteverschillen in verbruik.</div>
+    </div>
+
+    <div class="tl-item"><div class="tl-dot">8</div>
+      <h3>Hardangerfjord → Bergen</h3>
+      <div class="tl-meta">11 juli · ±150 km · 3u rijden</div>
+      <p>Via mooie fjordwegen naar Bergen. Stop bij <strong>Steindalsfossen</strong> — de waterval waar je achter kunt wandelen! Bergen is Noorwegen's meest charmante stad. Bryggen (UNESCO), de haven, vismarkt.</p>
+      <div class="tl-ev">⚡ Laden: Bergen is zeer EV-vriendelijk met tientallen laadpunten (Mer, Eviny, Recharge).</div>
+    </div>
+
+    <div class="tl-item"><div class="tl-dot">9</div>
+      <h3>Bergen</h3>
+      <div class="tl-meta">12 juli · Stadsdag + hike</div>
+      <p>Wandel door <strong>Bryggen</strong>, neem de <strong>Fløibanen</strong> funicular naar Mt. Fløyen voor panoramisch uitzicht. Bergen's vismarkt is kijken waard. Budgettip: Daily Pot voor goedkope soep, of picknick met supermarktspullen. Avondwandeling door de stad met het lange daglicht.</p>
+      <div class="tl-ev">⚡ Laden: Laad 's nachts op bij je accommodatie of op een openbare lader in het centrum.</div>
+    </div>
+
+    <div class="tl-item"><div class="tl-dot">10</div>
+      <h3>Bergen → Flåm / Aurlandsfjord</h3>
+      <div class="tl-meta">13 juli · ±170 km · 3u rijden</div>
+      <p>Via E16 naar het hart van de fjorden. Rij door de <strong>Lærdalstunnel</strong> (24,5 km — langste wegtunnel ter wereld!). Het dorpje <strong>Flåm</strong> ligt spectaculair aan het einde van de Aurlandsfjord. Toeristisch maar prachtig.</p>
+      <div class="tl-ev">⚡ Laden: Laadpunten in Flåm (Mer). Plan goed — populaire laders kunnen bezet zijn in juli.</div>
+    </div>
+
+    <div class="tl-item"><div class="tl-dot">11</div>
+      <h3>Sognefjord / Aurland / Stegastein</h3>
+      <div class="tl-meta">14 juli · Scenic routes dag</div>
+      <p>Rij de <strong>Aurlandsfjellet</strong> Scenic Route naar <strong>Stegastein Viewpoint</strong> — een spectaculair uitzichtplatform 650m boven de fjord. Bezoek de <strong>Borgund Staafkerk</strong> (1180), een van de best bewaarde houten kerken uit de middeleeuwen. Nærøyfjord (UNESCO) is adembenemend.</p>
+      <div class="tl-ev">⚡ Laden: Lærdal en Aurland hebben laadpunten. Hou batterijmarge voor de bergwegen.</div>
+    </div>
+
+    <div class="tl-item"><div class="tl-dot">12</div>
+      <h3>Sognefjord → Valdres / Jotunheimen-regio</h3>
+      <div class="tl-meta">15 juli · ±200 km · 4u rijden</div>
+      <p>Richting Oslo via de bergen. De <strong>Jotunheimen</strong> regio ('Huis van de Reuzen') is Noorwegen's hooggebergte. Mogelijkheid voor een korte bergwandeling of gewoon genieten van het landschap. Meren, rivieren en imposante pieken.</p>
+      <div class="tl-ev">⚡ Laden: Fagernes of Beitostølen hebben laadpunten. Regeneratie bij afdaling helpt!</div>
+    </div>
+
+    <div class="tl-item"><div class="tl-dot">13</div>
+      <h3>Naar Oslo</h3>
+      <div class="tl-meta">16 juli · ±200 km naar Oslo + stadsbezoek</div>
+      <p>Oslo in halve dag: <strong>Opera House</strong> (loop over het dak!), <strong>Vigeland Park</strong> (gratis — 200+ sculpturen), de haven, Aker Brygge. Oslo is modern, compact en goed te voet te doen. Overnacht buiten het centrum voor een beter tarief.</p>
+      <div class="tl-ev">⚡ Laden: Oslo heeft honderden laders. Tesla Superchargers, Mer, Recharge, Kople overal beschikbaar.</div>
+    </div>
+
+    <div class="tl-item"><div class="tl-dot">14</div>
+      <h3>Oslo → Göteborg (Zweden)</h3>
+      <div class="tl-meta">17 juli · ±300 km · 3,5u rijden</div>
+      <p>Begin van de terugrit via Zweden. Göteborg is een leuke tussenstop: het havengebied, Haga-wijk met gezellige cafés. Zweden is ook goed uitgerust qua laadinfrastructuur.</p>
+      <div class="tl-ev">⚡ Laden: IONITY/Recharge langs E6 in Zweden. Laadnetwerk vergelijkbaar met Noorwegen.</div>
+    </div>
+
+    <div class="tl-item"><div class="tl-dot">15</div>
+      <h3>Göteborg → Denemarken (Odense-regio)</h3>
+      <div class="tl-meta">18 juli · ±400 km · 4,5u rijden</div>
+      <p>Via de Øresundbrug naar Denemarken. Tol Øresundbrug: ±54 EUR voor een auto. Rustig terugzakken door Denemarken. Overnachting rond Odense of Kolding.</p>
+      <div class="tl-ev">⚡ Laden: Clever/E.ON/Tesla Superchargers in Denemarken. Laad vol voor de laatste dag.</div>
+    </div>
+
+    <div class="tl-item"><div class="tl-dot">16</div>
+      <h3>Denemarken → Gent 🏠</h3>
+      <div class="tl-meta">19 juli · ±750 km · 7,5u rijden</div>
+      <p>Laatste etappe terug naar huis via Noord-Duitsland en Nederland. Veel snelladers langs de route. Tip: vertrek vroeg om op tijd thuis te zijn. Herinner je onderweg al je mooie herinneringen! 🇧🇪</p>
+      <div class="tl-ev">⚡ Laden: 2-3 laadstops langs de Autobahn. Fastned in Nederland ideaal als laatste stop.</div>
+    </div>
+
+  </div>
+</div>
+</section>
+
+<!-- ==================== EV & LADEN ==================== -->
+<section id="ev">
+<div class="container">
+  <h2 class="section-title"><span class="emoji">⚡</span>Elektrisch rijden & laadgids</h2>
+  <p class="section-sub">Noorwegen is wereldleider in EV-adoptie — 95,9% van alle nieuwe auto's verkocht in 2025 was elektrisch. Het laadnetwerk is uitstekend.</p>
+
+  <div class="card-grid cols-2" style="margin-bottom:32px;">
+    <div class="card">
+      <h3>🔌 Laadnetwerk per land</h3>
+      <table class="price-table">
+        <tr><th>Land</th><th>Netwerk</th><th>Mediaan DC-prijs</th></tr>
+        <tr><td>🇧🇪 België</td><td>DATS24, Fastned, Electra, IONITY</td><td>€0,69/kWh</td></tr>
+        <tr><td>🇩🇪 Duitsland</td><td>ALDI, Lidl, EnBW, Fastned, IONITY</td><td>€0,59/kWh</td></tr>
+        <tr><td>🇩🇰 Denemarken</td><td>Clever, E.ON, Circle K, Tesla</td><td>€0,49/kWh</td></tr>
+        <tr><td>🇸🇪 Zweden</td><td>E.ON, Mer, Recharge, IONITY</td><td>€0,53/kWh</td></tr>
+        <tr><td>🇳🇴 Noorwegen</td><td>Mer, Recharge, Kople, Eviny, Circle K</td><td>€0,51/kWh</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>📊 Laadprijzen Noorwegen (2026)</h3>
+      <table class="price-table">
+        <tr><th>Aanbieder</th><th>Prijs (NOK/kWh)</th><th>±EUR/kWh</th></tr>
+        <tr><td>Tesla (off-peak)</td><td>2,40 – 7,40</td><td>€0,21 – €0,66</td></tr>
+        <tr><td>Uno-X</td><td>4,90 – 5,50</td><td>€0,44 – €0,49</td></tr>
+        <tr><td>IONITY</td><td>5,00 – 5,27</td><td>€0,45 – €0,47</td></tr>
+        <tr><td>Mer</td><td>5,99</td><td>€0,54</td></tr>
+        <tr><td>Kople</td><td>5,49 – 6,19</td><td>€0,49 – €0,55</td></tr>
+        <tr><td>Circle K</td><td>5,99 – 6,29</td><td>€0,54 – €0,56</td></tr>
+        <tr><td>Recharge</td><td>6,39 – 6,49</td><td>€0,57 – €0,58</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h3 style="margin-bottom:16px;">📱 Essentiële apps — download vóór vertrek</h3>
+  <div class="app-grid" style="margin-bottom:32px;">
+    <div class="app-card">
+      <div class="app-icon" style="background:#1a73e8;color:white;">A</div>
+      <div><h4>A Better Routeplanner</h4><p>EV-routeplanning met laadstops</p></div>
+    </div>
+    <div class="app-card">
+      <div class="app-icon" style="background:#4caf50;color:white;">P</div>
+      <div><h4>PlugShare</h4><p>Laadpalen vinden + reviews</p></div>
+    </div>
+    <div class="app-card">
+      <div class="app-icon" style="background:#00897b;color:white;">M</div>
+      <div><h4>Mer</h4><p>Groot Noors netwerk</p></div>
+    </div>
+    <div class="app-card">
+      <div class="app-icon" style="background:#f57c00;color:white;">R</div>
+      <div><h4>Recharge</h4><p>Snelladers in Scandinavië</p></div>
+    </div>
+    <div class="app-card">
+      <div class="app-icon" style="background:#e53935;color:white;">C</div>
+      <div><h4>Circle K</h4><p>Tankstations met DC-laders</p></div>
+    </div>
+    <div class="app-card">
+      <div class="app-icon" style="background:#7b1fa2;color:white;">F</div>
+      <div><h4>Fortum Charge & Drive</h4><p>44.000+ punten in Scandinavië</p></div>
+    </div>
+    <div class="app-card">
+      <div class="app-icon" style="background:#1565c0;color:white;">E</div>
+      <div><h4>Elton</h4><p>Noorse aggregator-app</p></div>
+    </div>
+    <div class="app-card">
+      <div class="app-icon" style="background:#333;color:white;">T</div>
+      <div><h4>Tesla</h4><p>Superchargers (ook niet-Tesla)</p></div>
+    </div>
+  </div>
+
+  <div class="tip-box green">
+    <h4>💡 Top EV-tips voor deze route</h4>
+    <ul>
+      <li><strong>Rij 90-100 km/u</strong> op snelwegen voor optimaal verbruik — in Noorwegen is de max vaak 80-90 km/u dus dit gaat vanzelf.</li>
+      <li><strong>Laad slim: 15% → 80%</strong> aan snelladers. Volladen tot 100% is langzamer en duurder.</li>
+      <li><strong>Laad 's nachts aan je accommodatie</strong> waar mogelijk — vaak goedkoper of gratis.</li>
+      <li><strong>Bergen en fjorden = meer verbruik omhoog</strong>, maar regeneratie bij afdaling compenseert deels.</li>
+      <li><strong>Hou minimaal 20% batterij</strong> als marge in afgelegen fjordgebieden.</li>
+      <li><strong>EV's betalen minder tol</strong> in Noorwegen — tot 30% korting vs. brandstofauto's.</li>
+      <li><strong>Registreer bij minstens 3 apps</strong> vóór vertrek (sommige laders werken alleen met hun eigen app).</li>
+      <li><strong>CCS Combo 2</strong> is de standaard — check dat je auto dit ondersteunt (bijna alle moderne EV's doen dit).</li>
+    </ul>
+  </div>
+
+  <div class="tip-box orange">
+    <h4>⚠️ Opgelet: veelgemaakte EV-fouten</h4>
+    <ul>
+      <li>Aankomen bij een lader zonder account/app → altijd vooraf registreren!</li>
+      <li>Niet controleren of de lader werkt / beschikbaar is → check realtime status in de app.</li>
+      <li>Ferry nemen zonder vooraf te laden → je kan meestal NIET laden op de ferry.</li>
+      <li>Laadsessie niet correct beëindigen → kan extra kosten opleveren.</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- ==================== BEZIENSWAARDIGHEDEN ==================== -->
+<section id="bezienswaardigheden">
+<div class="container">
+  <h2 class="section-title"><span class="emoji">⭐</span>Must-see bezienswaardigheden</h2>
+  <p class="section-sub">De absolute hoogtepunten van Zuid-Noorwegen — en het meeste is gratis!</p>
+
+  <div class="card-grid cols-3">
+
+    <div class="card">
+      <h3>🪨 Preikestolen</h3>
+      <p>Iconisch plateau 604m boven de Lysefjord. Relatief makkelijke hike (8 km retour, 4-5u). Start vroeg om drukte te vermijden. Gratis, parkeren ±250 NOK.</p>
+      <span class="tag tag-hike">Hike</span><span class="tag tag-free">Gratis</span>
+    </div>
+
+    <div class="card">
+      <h3>💧 Vøringsfossen</h3>
+      <p>Noorwegens beroemdste waterval — 182m diep in een dramatische kloof. Spectaculair uitzichtplatform (gratis). Makkelijk bereikbaar met de auto.</p>
+      <span class="tag tag-scenic">Scenic</span><span class="tag tag-free">Gratis</span>
+    </div>
+
+    <div class="card">
+      <h3>🏘 Bryggen, Bergen</h3>
+      <p>UNESCO Werelderfgoed: kleurrijke houten handelspanden uit de Hanzetijd. Loop door de smalle steegjes. Gratis te bezoeken, museum apart.</p>
+      <span class="tag tag-city">Stad</span><span class="tag tag-free">Gratis</span>
+    </div>
+
+    <div class="card">
+      <h3>🚂 Flåm & Aurlandsfjord</h3>
+      <p>Schilderachtig fjorddorp. De Flåmsbana (trein) is iconisch maar prijzig. Het dorp zelf en de fjord zijn gratis en prachtig. Leuk voor foto's.</p>
+      <span class="tag tag-scenic">Scenic</span><span class="tag tag-city">Dorp</span>
+    </div>
+
+    <div class="card">
+      <h3>👁 Stegastein Viewpoint</h3>
+      <p>Architecturaal uitzichtplatform 650m boven de Aurlandsfjord. Vrij toegankelijk. Onderdeel van de Aurlandsfjellet National Scenic Route. Adembenemend!</p>
+      <span class="tag tag-scenic">Scenic</span><span class="tag tag-free">Gratis</span>
+    </div>
+
+    <div class="card">
+      <h3>⛪ Borgund Staafkerk</h3>
+      <p>Spectaculaire houten kerk uit 1180. Een van de best bewaarde staafkerken. Entree ±120 NOK. Unieke Viking-architectuur die je nergens anders ziet.</p>
+      <span class="tag tag-city">Cultuur</span>
+    </div>
+
+    <div class="card">
+      <h3>💧 Låtefossen</h3>
+      <p>Dubbele waterval die recht naast de weg valt — je voelt de nevel als je erlangs rijdt! Volledig gratis, parkeerplaats ernaast. Perfecte fotostop.</p>
+      <span class="tag tag-scenic">Scenic</span><span class="tag tag-free">Gratis</span>
+    </div>
+
+    <div class="card">
+      <h3>💧 Langfoss</h3>
+      <p>612m hoge waterval — een van Europa's mooiste. Valt recht de fjord in. Goed zichtbaar vanaf de weg. Kort wandelpad naar een dichter uitzichtpunt.</p>
+      <span class="tag tag-scenic">Scenic</span><span class="tag tag-free">Gratis</span>
+    </div>
+
+    <div class="card">
+      <h3>🏔 Jotunheimen</h3>
+      <p>'Huis van de Reuzen' — Noorwegens hoogste berggebied. Korte wandelingen tot meerdaagse treks. Besseggen Ridge is de bekendste (18 km, intensief).</p>
+      <span class="tag tag-hike">Hike</span><span class="tag tag-scenic">Natuur</span>
+    </div>
+
+    <div class="card">
+      <h3>🏛 Oslo highlights</h3>
+      <p>Opera House (gratis, loop over het dak), Vigeland Park (200+ sculpturen, gratis), Aker Brygge haven. Modern en compact — perfect voor een halve dag.</p>
+      <span class="tag tag-city">Stad</span><span class="tag tag-free">Gratis</span>
+    </div>
+
+    <div class="card">
+      <h3>🚗 Lærdalstunnel</h3>
+      <p>Langste wegtunnel ter wereld (24,5 km). Verlicht met blauwe grotten onderweg. Een ervaring op zich — en gratis als onderdeel van de route.</p>
+      <span class="tag tag-scenic">Ervaring</span><span class="tag tag-free">Gratis</span>
+    </div>
+
+    <div class="card">
+      <h3>💧 Steindalsfossen</h3>
+      <p>Uniek: je kan achter deze waterval wandelen via een pad. Vlak bij Bergen, makkelijk bereikbaar. Volledig gratis, ook parkeren.</p>
+      <span class="tag tag-scenic">Scenic</span><span class="tag tag-free">Gratis</span>
+    </div>
+
+  </div>
+</div>
+</section>
+
+<!-- ==================== WEER ==================== -->
+<section id="weer">
+<div class="container">
+  <h2 class="section-title"><span class="emoji">🌦</span>Weer in juli</h2>
+  <p class="section-sub">Juli is een van de beste maanden voor Noorwegen. Maar verwacht alles — soms 4 seizoenen op één dag.</p>
+
+  <div class="weather-grid" style="margin-bottom:32px;">
+    <div class="weather-card">
+      <div class="temp" style="color:var(--orange);">22°C</div>
+      <div class="label">Max overdag<br>kust/steden</div>
+    </div>
+    <div class="weather-card">
+      <div class="temp" style="color:var(--accent);">13°C</div>
+      <div class="label">Min 's nachts<br>kust/steden</div>
+    </div>
+    <div class="weather-card">
+      <div class="temp" style="color:var(--accent2);">8-15°C</div>
+      <div class="label">In de bergen<br>& op hoogte</div>
+    </div>
+    <div class="weather-card">
+      <div class="temp" style="color:var(--purple);">20u+</div>
+      <div class="label">Daglicht<br>per dag</div>
+    </div>
+    <div class="weather-card">
+      <div class="temp" style="color:var(--muted);">70%</div>
+      <div class="label">Luchtvochtigheid<br>gemiddeld</div>
+    </div>
+    <div class="weather-card">
+      <div class="temp" style="color:var(--accent);">82mm</div>
+      <div class="label">Neerslag<br>gemiddeld</div>
+    </div>
+  </div>
+
+  <div class="card-grid cols-2">
+    <div class="tip-box green">
+      <h4>☀️ Voordelen in juli</h4>
+      <ul>
+        <li>Warmste maand — meeste activiteiten mogelijk</li>
+        <li>20+ uur daglicht — hike nog om 22u!</li>
+        <li>Alle bergpassen en wandelpaden open</li>
+        <li>Alle ferry's en scenic routes operationeel</li>
+        <li>Noren zijn buiten en de sfeer is fantastisch</li>
+      </ul>
+    </div>
+    <div class="tip-box orange">
+      <h4>🌧 Waar je op moet letten</h4>
+      <ul>
+        <li>Bergen is een van de natste steden in Europa — ook in juli</li>
+        <li>Weer wisselt snel: zon + regen + wind in één uur</li>
+        <li>In de bergen kan het snel koud worden</li>
+        <li>Hoogseizoen: meer drukte bij populaire plekken</li>
+        <li>Accommodatie en ferry's boeken snel vol</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ==================== BUDGET ==================== -->
+<section id="budget">
+<div class="container">
+  <h2 class="section-title"><span class="emoji">💰</span>Budgetschatting</h2>
+  <p class="section-sub">Geschatte kosten voor 16 dagen, 2 personen, elektrische auto, budget-stijl (camping/hutten, zelf koken).</p>
+
+  <div style="max-width:700px;">
+    <div class="budget-row">
+      <div class="budget-label">🔌 Laden (stroom)</div>
+      <div class="budget-bar-wrap"><div class="budget-bar" style="width:30%;background:linear-gradient(90deg,var(--green),#22c55e);">±4.800km</div></div>
+      <div class="budget-amount">€250–400</div>
+    </div>
+    <div class="budget-row">
+      <div class="budget-label">⛴ Ferry heen</div>
+      <div class="budget-bar-wrap"><div class="budget-bar" style="width:25%;background:linear-gradient(90deg,var(--accent),var(--accent2));">Hirtshals→Kristiansand</div></div>
+      <div class="budget-amount">€125–350</div>
+    </div>
+    <div class="budget-row">
+      <div class="budget-label">🌉 Tol & bruggen</div>
+      <div class="budget-bar-wrap"><div class="budget-bar" style="width:20%;background:linear-gradient(90deg,var(--purple),#8b5cf6);">AutoPASS + Øresund</div></div>
+      <div class="budget-amount">€100–200</div>
+    </div>
+    <div class="budget-row">
+      <div class="budget-label">🏕 Overnachting</div>
+      <div class="budget-bar-wrap"><div class="budget-bar" style="width:55%;background:linear-gradient(90deg,var(--orange),#f59e0b);">15 nachten</div></div>
+      <div class="budget-amount">€450–900</div>
+    </div>
+    <div class="budget-row">
+      <div class="budget-label">🍝 Eten & drinken</div>
+      <div class="budget-bar-wrap"><div class="budget-bar" style="width:40%;background:linear-gradient(90deg,var(--red),#ef4444);">16 dagen zelf koken</div></div>
+      <div class="budget-amount">€300–500</div>
+    </div>
+    <div class="budget-row">
+      <div class="budget-label">⛴ Ferry's Noorwegen</div>
+      <div class="budget-bar-wrap"><div class="budget-bar" style="width:15%;background:linear-gradient(90deg,#64748b,#94a3b8);">Korte oversteekjes</div></div>
+      <div class="budget-amount">€50–150</div>
+    </div>
+    <div class="budget-row">
+      <div class="budget-label">🎟 Activiteiten</div>
+      <div class="budget-bar-wrap"><div class="budget-bar" style="width:12%;background:linear-gradient(90deg,var(--accent2),#06b6d4);">Parkeren + entree</div></div>
+      <div class="budget-amount">€50–100</div>
+    </div>
+  </div>
+
+  <div style="margin-top:24px; padding:24px; background:var(--card); border-radius:14px; border:2px solid var(--accent);">
+    <h3 style="font-size:24px; margin-bottom:8px;">💶 Totaal geschat: <span style="color:var(--accent);">€1.300 – €2.600</span> <span style="font-size:16px; color:var(--muted); font-weight:400;">voor 2 personen</span></h3>
+    <p style="color:var(--muted);">= circa <strong>€650 – €1.300 per persoon</strong> | Met 3-4 personen wordt het nóg goedkoper per persoon. Wildcamperen met tent is de goedkoopste optie.</p>
+  </div>
+
+  <div class="card-grid cols-2" style="margin-top:24px;">
+    <div class="tip-box green">
+      <h4>🔋 Elektriciteit vs. benzine besparing</h4>
+      <p>Een EV verbruikt gemiddeld 18-22 kWh/100km. Bij ±4.800 km en een gemiddelde laadprijs van €0,55/kWh kost laden <strong>circa €475–580 totaal</strong>. Een benzine-auto zou voor dezelfde route <strong>€600–900+ aan brandstof</strong> kosten. Je bespaart dus <strong>€100–300+</strong> op brandstof alleen al!</p>
+    </div>
+    <div class="tip-box green">
+      <h4>🛣 EV-voordeel in Noorwegen</h4>
+      <p>Elektrische auto's betalen in Noorwegen <strong>tot 30% minder tol</strong> dan brandstofauto's. Ook op ferry's kan je soms korting krijgen. Dit maakt elektrisch rijden daar extra aantrekkelijk.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ==================== TIPS ==================== -->
+<section id="tips">
+<div class="container">
+  <h2 class="section-title"><span class="emoji">💡</span>Tips & Tricks</h2>
+  <p class="section-sub">Onmisbare adviezen voor een zorgeloze en goedkope reis.</p>
+
+  <div class="card-grid cols-2">
+
+    <div class="tip-box green">
+      <h4>🛒 Eten & besparen</h4>
+      <ul>
+        <li><strong>Koop basisvoedsel in Duitsland/Denemarken</strong> vóór Noorwegen — pasta, rijst, havermout, sauzen, koffie, snacks</li>
+        <li>In Noorwegen: shop bij <strong>REMA 1000, Kiwi, Coop Extra</strong> — de budgetsupermarkten</li>
+        <li>Kook zelf op een campinggas/kooktoestel</li>
+        <li>Picknick bij uitzichtpunten = beste ervaring én goedkoopst</li>
+        <li>Vermijd restaurants zoveel mogelijk (maaltijd = €25-40+)</li>
+        <li><strong>Alcohol in Noorwegen is extreem duur</strong> — koop in Duitsland/Denemarken als je dit wilt</li>
+      </ul>
+    </div>
+
+    <div class="tip-box green">
+      <h4>🏕 Slapen & overnachten</h4>
+      <ul>
+        <li><strong>Allemansretten (vrijheid om te kamperen):</strong> je mag gratis wildcamperen met tent, minstens 150m van gebouwen, max 2 nachten op dezelfde plek</li>
+        <li>Campings: ±150-350 NOK/nacht (€14-33)</li>
+        <li><strong>Hytter (eenvoudige hutten):</strong> vaak €40-80/nacht, soms met kookgelegenheid</li>
+        <li>Boek populaire plekken weken vooraf — juli is piekseizoen!</li>
+        <li>Apps: <strong>Park4Night, Norcamp, Booking.com</strong></li>
+      </ul>
+    </div>
+
+    <div class="tip-box orange">
+      <h4>🚗 Autorijden in Noorwegen</h4>
+      <ul>
+        <li><strong>Snelheidslimieten:</strong> 50 in steden, 80 buiten, 90-110 op snelwegen — strenge controles!</li>
+        <li>Wegen zijn smal en bochtig — 250 km kan 4+ uur duren</li>
+        <li><strong>Tol:</strong> automatisch via kentekenregistratie, factuur komt later. EV's betalen minder.</li>
+        <li>Veel tunnels — sommige heel lang (Lærdalstunnel = 24,5 km)</li>
+        <li>Korte ferry's zijn deel van de route — gewoon aanschuiven, betalen aan boord of via AutoPASS</li>
+        <li><strong>Dimlichten altijd aan</strong> — verplicht, ook overdag</li>
+        <li>Alcohollimiet: 0,02‰ — praktisch nultolerantie</li>
+      </ul>
+    </div>
+
+    <div class="tip-box orange">
+      <h4>⛴ Ferry boeken (Hirtshals → Kristiansand)</h4>
+      <ul>
+        <li>2 aanbieders: <strong>Color Line</strong> (3u15) en <strong>Fjord Line</strong> (2u25 snelboot of 3u55 cruise)</li>
+        <li>Prijzen met auto: <strong>€125 – €350+</strong> in juli (hoogseizoen)</li>
+        <li><strong>Boek zo vroeg mogelijk</strong> — weken vooraf, zeker in juli</li>
+        <li>Tip: boek op de <strong>Noorse website</strong> (.no) — vaak €20-30 goedkoper dan .de/.nl</li>
+        <li>Doordeweeks is goedkoper dan weekend</li>
+        <li>Je kan NIET laden op de ferry — laad vooraf!</li>
+      </ul>
+    </div>
+
+    <div class="tip-box">
+      <h4>💳 Betalen & praktisch</h4>
+      <ul>
+        <li>Noorwegen is bijna 100% cashless — <strong>bankkaart/creditcard volstaat overal</strong></li>
+        <li>Noorse Kroon (NOK): 1 EUR ≈ 11-12 NOK</li>
+        <li>Gebruik een <strong>kaart zonder wisselkoerskosten</strong> (bv. Wise, Revolut, N26)</li>
+        <li>Mobiel bereik is goed in dorpen, kan wegvallen in afgelegen fjordgebieden</li>
+        <li>Download offline kaarten in Google Maps vóór vertrek!</li>
+      </ul>
+    </div>
+
+    <div class="tip-box">
+      <h4>🐛 Muggen & natuur</h4>
+      <ul>
+        <li>Muggen kunnen vervelend zijn bij meren en stilstaand water — neem <strong>muggenspray</strong> mee</li>
+        <li>Respecteer de natuur: <strong>Leave No Trace</strong></li>
+        <li>Geen bloemen plukken, geen afval achterlaten</li>
+        <li>Honden altijd aan de lijn in de natuur (april-augustus vanwege broedseizoen)</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+</section>
+
+<!-- ==================== PAKLIJST ==================== -->
+<section id="packlist">
+<div class="container">
+  <h2 class="section-title"><span class="emoji">🎒</span>Paklijst</h2>
+  <p class="section-sub">Alles wat je nodig hebt voor 16 dagen Noorwegen in juli — van kleding tot kookgerei.</p>
+
+  <div class="card-grid cols-3">
+    <div class="card">
+      <h3>👕 Kleding</h3>
+      <ul class="checklist">
+        <li>Waterdichte regenjas (geen goedkope!)</li>
+        <li>Waterdichte regenbroek</li>
+        <li>Fleece of wollen trui</li>
+        <li>Thermisch ondergoed (voor bergen)</li>
+        <li>T-shirts (merino of synthetisch)</li>
+        <li>Wandelbroek(en)</li>
+        <li>Korte broek (voor warme dagen)</li>
+        <li>Wandelschoenen (ingelopen!)</li>
+        <li>Wollen/synthetische sokken (3+ paar)</li>
+        <li>Zonnebril</li>
+        <li>Pet of hoedje</li>
+        <li>Lichte donsjas of bodywarmer</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🏕 Kamperen & slapen</h3>
+      <ul class="checklist">
+        <li>Tent (lichtgewicht, windbestendig)</li>
+        <li>Slaapzak (comfort 5-10°C)</li>
+        <li>Slaapmat / luchtbed</li>
+        <li>Hoofdkussen (opblaasbaar)</li>
+        <li>Campinggas kooktoestel</li>
+        <li>Gaspatronen</li>
+        <li>Pannetje + bestek</li>
+        <li>Borden / kommen</li>
+        <li>Slaapmasker (voor het lange daglicht!)</li>
+        <li>Oordopjes</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>📱 Tech & overig</h3>
+      <ul class="checklist">
+        <li>Powerbank (20.000 mAh+)</li>
+        <li>Laadkabels (telefoon, camera)</li>
+        <li>EU-stekker (Noorwegen = Type F)</li>
+        <li>Offline kaarten (Google Maps)</li>
+        <li>Drinkfles (navulbaar — kraanwater is top!)</li>
+        <li>Zonnebrandcrème SPF 50+</li>
+        <li>Muggenspray (DEET)</li>
+        <li>EHBO-setje</li>
+        <li>Verrekijker (optioneel maar leuk)</li>
+        <li>Herbruikbare zakken voor afval</li>
+        <li>Rijbewijs + autopapieren</li>
+        <li>Europese Ziekteverzekeringskaart (EZVK)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ==================== FOOTER ==================== -->
+<footer>
+  <p>🇳🇴 Noorwegen EV Roadtrip Planner — Gent → Zuid-Noorwegen — 4 t.e.m. 19 juli</p>
+  <p style="margin-top:8px;">Gemaakt met ❤️ als reisplanner. Prijzen en informatie zijn indicatief (maart 2026). Controleer altijd actuele prijzen bij de aanbieders zelf.</p>
+  <p style="margin-top:8px;">Bronnen: Eleport, Mer, Direct Ferries, Visit Norway, Things To Do In Norway, Postcards From The World</p>
+</footer>
+
+<!-- ==================== SCRIPTS ==================== -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map = L.map('map',{scrollWheelZoom:false}).setView([58.5,8],5);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+  maxZoom:18, attribution:'© OpenStreetMap contributors, © CARTO'
+}).addTo(map);
+
+// Route HEEN (blauw)
+const heenCoords = [
+  [51.054,3.717],[52.379,4.899],[53.551,9.994],[55.860,9.844],[57.588,9.959],  // Gent→Hirtshals
+  [58.147,7.996],  // Kristiansand
+  [58.969,5.733],  // Stavanger
+  [58.986,6.190],  // Preikestolen
+  [59.883,6.551],  // Langfoss
+  [60.069,6.546],  // Odda
+  [60.426,7.252],  // Vøringsfossen
+  [60.316,6.063],  // Steindalsfossen
+  [60.391,5.322],  // Bergen
+  [60.864,7.115],  // Flåm
+  [60.906,7.187],  // Stegastein
+  [60.867,7.815],  // Borgund
+  [61.109,9.065],  // Valdres
+  [59.914,10.752]  // Oslo
+];
+L.polyline(heenCoords,{color:'#38bdf8',weight:3.5,opacity:0.8,dashArray:null}).addTo(map);
+
+// Route TERUG (groen)
+const terugCoords = [
+  [59.914,10.752],  // Oslo
+  [59.284,11.109],  // grens
+  [57.709,11.975],  // Göteborg
+  [55.676,12.568],  // Kopenhagen/Øresund
+  [55.404,10.402],  // Odense
+  [54.323,10.123],  // Kiel-regio
+  [53.551,9.994],   // Hamburg
+  [52.379,4.899],   // Amsterdam-regio
+  [51.054,3.717]    // Gent
+];
+L.polyline(terugCoords,{color:'#4ade80',weight:3.5,opacity:0.8,dashArray:'8 6'}).addTo(map);
+
+// Markers
+const stops = [
+  {c:[51.054,3.717],n:'🏠 Gent',d:'Start- en eindpunt van je roadtrip.',col:'#fff'},
+  {c:[53.551,9.994],n:'🇩🇪 Hamburg-regio',d:'Dag 1: Eerste overnachting. Goedkoop boodschappen doen!',col:'#38bdf8'},
+  {c:[57.588,9.959],n:'⛴ Hirtshals',d:'Dag 2: Ferryhaven. Laad vol vóór de oversteek!',col:'#38bdf8'},
+  {c:[58.147,7.996],n:'🇳🇴 Kristiansand',d:'Dag 3: Aankomst Noorwegen. Gezellig kuststadje.',col:'#38bdf8'},
+  {c:[58.969,5.733],n:'🏙 Stavanger',d:'Dag 4: Oude stad, Gamle Stavanger, haven.',col:'#a78bfa'},
+  {c:[58.986,6.190],n:'🪨 Preikestolen',d:'Dag 5: Iconische hike! 604m boven Lysefjord. Start vroeg!',col:'#fb923c'},
+  {c:[59.883,6.551],n:'💧 Langfoss',d:'Dag 6: 612m waterval — een van Europa's mooiste.',col:'#22d3ee'},
+  {c:[60.069,6.546],n:'🏔 Odda / Hardanger',d:'Dag 6-7: Basis voor Hardangerfjord verkenning.',col:'#38bdf8'},
+  {c:[60.426,7.252],n:'💧 Vøringsfossen',d:'Dag 7: Noorwegens beroemdste waterval (182m).',col:'#22d3ee'},
+  {c:[60.391,5.322],n:'🏙 Bergen',d:'Dag 8-9: Bryggen (UNESCO), Fløibanen, vismarkt.',col:'#a78bfa'},
+  {c:[60.864,7.115],n:'🚂 Flåm',d:'Dag 10: Schilderachtig fjorddorp. Lærdalstunnel!',col:'#22d3ee'},
+  {c:[60.906,7.187],n:'👁 Stegastein',d:'Dag 11: Spectaculair uitzichtplatform 650m boven fjord.',col:'#22d3ee'},
+  {c:[60.867,7.815],n:'⛪ Borgund Staafkerk',d:'Dag 11: Houten kerk uit 1180, uniek in de wereld.',col:'#a78bfa'},
+  {c:[61.109,9.065],n:'🏔 Valdres / Jotunheimen',d:'Dag 12: Berglandschappen, meren, korte hikes.',col:'#fb923c'},
+  {c:[59.914,10.752],n:'🏙 Oslo',d:'Dag 13: Opera House, Vigeland Park, Aker Brygge.',col:'#a78bfa'},
+  {c:[57.709,11.975],n:'🇸🇪 Göteborg',d:'Dag 14: Terugrit via Zweden. Leuk tussenstad.',col:'#4ade80'},
+  {c:[55.404,10.402],n:'🇩🇰 Odense',d:'Dag 15: Tussenstop in Denemarken.',col:'#4ade80'},
+];
+
+stops.forEach(s => {
+  const icon = L.divIcon({
+    html:`<div style="background:${s.col};width:12px;height:12px;border-radius:50%;border:2px solid #0f172a;box-shadow:0 0 6px ${s.col}"></div>`,
+    className:'',iconSize:[12,12],iconAnchor:[6,6]
+  });
+  L.marker(s.c,{icon}).addTo(map).bindPopup(`<b style="font-size:14px">${s.n}</b><br><span style="font-size:12px">${s.d}</span>`);
+});
+
+map.fitBounds(L.polyline([...heenCoords,...terugCoords]).getBounds(),{padding:[30,30]});
+</script>
+
+</body>
+</html>
